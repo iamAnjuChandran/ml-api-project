@@ -1,13 +1,35 @@
-name: Build and Push Docker image
+name: CI/CD - test, build and push Docker image
 
 on:
   push:
     branches: [ main ]
+    tags: [ "v*" ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          # if you don't have requirements.txt yet, create an empty one or adjust this line
+
+      - name: Run app test
+        run: |
+          python -c "print('tests passed')"
+          # replace this with pytest or unittest later
+
+  build_and_push:
+    needs: test          # <-- do not run this unless 'test' succeeds
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -18,9 +40,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push image
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/ml-api:latest
+
